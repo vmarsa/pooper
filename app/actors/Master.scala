@@ -30,9 +30,12 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
 
   override def receive: Receive = {
     case Launch => {
-      launched = true
-      write("", false)
-      self ! Next
+      if(!launched) {
+        Logger.info("launch")
+        launched = true
+        write("", false)
+        self ! Next
+      }
     }
     case Next => {
       if(emails.hasNext) {

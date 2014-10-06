@@ -26,4 +26,9 @@ object Application extends Controller {
     }
   }
 
+  def get = Action {
+    Ok.sendFile(new java.io.File("result.csv"))
+  }
+
+
 }
