@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, Actor}
 import akka.actor.Actor.Receive
 import play.api.libs.ws.WS
 import scala.util.{Failure, Success}
+import play.api.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -14,14 +15,9 @@ class Slave extends Actor {
 
   override def receive: Receive = {
     case Ask(email) => {
-      println("Ask "+email)
+      Logger.info("Ask "+email)
       val s = sender
-      val result = WS.url(url).withHeaders("User-Agent" -> userAgent)
-        .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",email)).post("")
-      result.onComplete({
-        case Success(r) => s ! Answer(email, r.status, r.body)
-        case Failure(e) =>
-      })
+      call(s, email)
     }
   }
 
@@ -31,7 +27,7 @@ class Slave extends Actor {
     result.onComplete({
       case Success(r) => s ! Answer(email, r.status, r.body)
       case Failure(e) => {
-        println("Send error")
+        Logger.error("Send error")
         e.printStackTrace()
         call(s, email)
       }

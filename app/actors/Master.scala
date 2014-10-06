@@ -8,6 +8,7 @@ import java.io.FileWriter
 import scala.io.Source
 import play.api.Play
 import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.Logger
 
 /**
  * Created by DmiBaska on 06.10.2014.
@@ -40,13 +41,13 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       }
     }
     case a@Answer(email, status, _) if status == 403 || a.isBlock => {
-      print("Bad answer "+email+" "+status.toString)
+      Logger.info("Bad answer "+email+" "+status.toString)
       if(lastBlock && cooldown < 100000) cooldown *= 2
       lastBlock = true
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, slaveActor, Ask(email))
     }
     case a@Answer(email, status, body) => {
-      print("Good answer "+email+" "+status.toString)
+      Logger.info("Good answer "+email+" "+status.toString)
       lastBlock = false
       write(email+","+{if(a.exists) "1" else "0"}+","+body, true)
       self ! Next
