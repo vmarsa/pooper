@@ -36,6 +36,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
         write("", false)
         self ! Next
       }
+      else Logger.info("Already launched")
     }
     case Next => {
       if(emails.hasNext) {
@@ -62,7 +63,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
   private def write(line: String, append: Boolean) = {
     val fw = new FileWriter("result.csv", append)
     try {
-      fw.write("")
+      fw.write(line)
     }
     finally fw.close()
   }

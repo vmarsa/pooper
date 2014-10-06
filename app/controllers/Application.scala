@@ -20,6 +20,7 @@ object Application extends Controller {
   implicit val timeout = Timeout(10 seconds)
 
   def index = {
+    Logger.info("Launching!")
     master ! Launch
     Action.async{
       (master ? StatusReq).mapTo[StatusResp].map(msg => Ok(views.html.index("Cooldown: "+msg.toString)))
