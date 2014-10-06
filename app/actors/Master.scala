@@ -51,7 +51,8 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       write(email+","+{if(a.exists) "1" else "0"}+","+body, true)
       self ! Next
     }
-    case StatusReq => sender ! StatusResp(cooldown)
+    case StatusReq =>
+      sender ! StatusResp(cooldown)
   }
 
   private def write(line: String, append: Boolean) = {
