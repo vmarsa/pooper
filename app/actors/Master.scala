@@ -36,14 +36,14 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
     case Next => {
       if(emails.hasNext) {
         val email = emails.next()
-        slaveActor ! Ask(email)
+        Akka.system.scheduler.scheduleOnce(100 milliseconds, slaveActor, Ask(email))
       }
     }
     case a@Answer(email, status, _) if status == 403 || a.isBlock => {
-      print("Bas answer "+email+" "+status.toString)
-      if(lastBlock) cooldown *= 2
+      print("Bad answer "+email+" "+status.toString)
+      if(lastBlock && cooldown < 100000) cooldown *= 2
       lastBlock = true
-      Akka.system.scheduler.scheduleOnce(50 milliseconds, slaveActor, Ask(email))
+      Akka.system.scheduler.scheduleOnce(cooldown milliseconds, slaveActor, Ask(email))
     }
     case a@Answer(email, status, body) => {
       print("Good answer "+email+" "+status.toString)
