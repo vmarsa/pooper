@@ -53,7 +53,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
     case a@Answer(email, status, body) => {
       Logger.info("Good answer "+email+" "+status.toString)
       lastBlock = false
-      write(email+","+{if(a.exists) "1" else "0"}+","+body, true)
+      write(email+","+{if(a.exists) "1" else "0"}+","+body+"\n", true)
       self ! Next
     }
     case StatusReq =>
