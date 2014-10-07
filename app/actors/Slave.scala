@@ -40,7 +40,7 @@ class Slave extends Actor {
           case Access => mrimUrl
         }
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
-          .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",email)).post("")
+          .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
         result.onComplete({
           case Success(r) => {
             s ! Answer(method, extractedEmail, r.status, r.body)
