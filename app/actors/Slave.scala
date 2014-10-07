@@ -43,12 +43,12 @@ class Slave extends Actor {
           .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
         result.onComplete({
           case Success(r) => {
-            s ! Answer(method, extractedEmail, r.status, r.body)
+            s ! Answer(method, email, r.status, r.body)
           }
           case Failure(e) => {
             Logger.error("Send error")
             e.printStackTrace()
-            call(method, s, extractedEmail)
+            call(method, s, email)
           }
         })
       }
