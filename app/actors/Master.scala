@@ -86,7 +86,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
   private def statusMessage = {
     val startMils = start.map(_.getTime)
     val currentMils = new Date().getTime
-    StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed/(currentMils - s)*1000*60*60).getOrElse(0))
+    StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0))
   }
 
   private def write(line: String, append: Boolean) = {
