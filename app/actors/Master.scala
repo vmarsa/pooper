@@ -20,10 +20,15 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
   val slaveActor = slaveFactory(context)
 
   var cooldown = 1000
+  var pause = 100
 
   var lastBlock = false
 
   var launched = false
+
+  var finished = false
+
+  var processed = 0
 
   import play.api.Play.current
   lazy val emails: Iterator[String] = Source.fromInputStream(Play.classloader.getResourceAsStream("emails.csv")).getLines()
@@ -41,23 +46,36 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
     case Next => {
       if(emails.hasNext) {
         val email = emails.next()
-        Akka.system.scheduler.scheduleOnce(100 milliseconds, slaveActor, Ask(email))
+        Akka.system.scheduler.scheduleOnce(pause milliseconds, slaveActor, Ask(Recovery, email))
       }
+      else
+        finished = true
     }
-    case a@Answer(email, status, _) if status == 403 || a.isBlock => {
-      Logger.info("Bad answer "+email+" "+status.toString)
+    case a@Answer(method, email, status, _) if status == 403 || a.isBlock => {
+      Logger.info("Bad "+method.id+" answer "+email+" "+status.toString)
       if(lastBlock && cooldown < 100000) cooldown *= 2
       lastBlock = true
-      Akka.system.scheduler.scheduleOnce(cooldown milliseconds, slaveActor, Ask(email))
+      Akka.system.scheduler.scheduleOnce(cooldown milliseconds, slaveActor, Ask(method, email))
     }
-    case a@Answer(email, status, body) => {
+    case a@Answer(Recovery, email, status, body) if a.isMrim => {
+      Logger.info("Mrim answer "+email+" "+status.toString)
+      lastBlock = false
+      slaveActor ! Ask(Access, email)
+    }
+    case a@Answer(Recovery, email, status, body) => {
       Logger.info("Good answer "+email+" "+status.toString)
       lastBlock = false
       write(email+","+{if(a.exists) "1" else "0"}+","+body+"\r\n", true)
+      processed += 1
       self ! Next
     }
     case StatusReq =>
-      sender ! StatusResp(cooldown)
+      sender ! StatusResp(cooldown, pause, processed, finished)
+    case SetCooldown(num) =>
+      cooldown = math.max(math.min(num, 100000), 100)
+      sender ! StatusResp(cooldown, pause, processed, finished)
+    case SetPause(num) =>
+      pause = math.max(math.min(num, 100000), 5)
   }
 
   private def write(line: String, append: Boolean) = {
@@ -75,6 +93,10 @@ case object Next
 
 case object StatusReq
 
-case class StatusResp(cooldown: Int)
+case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean)
+
+case class SetCooldown(cooldown: Int)
+
+case class SetPause(pause: Int)
 
 

@@ -5,13 +5,14 @@ import play.api._
 import play.api.mvc._
 import play.libs.Akka
 import akka.actor.Props
-import actors.{StatusResp, StatusReq, Launch, Master}
+import actors._
 import akka.util.Timeout
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
 import scala.concurrent.duration._
+import actors.StatusResp
 
 object Application extends Controller {
 
@@ -23,7 +24,7 @@ object Application extends Controller {
     Logger.info("Launching!")
     master ! Launch
     Action.async{
-      (master ? StatusReq).mapTo[StatusResp].map(msg => Ok(views.html.index("Cooldown: "+msg.toString)))
+      (master ? StatusReq).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
     }
   }
 
@@ -31,5 +32,12 @@ object Application extends Controller {
     Ok.sendFile(new java.io.File("result.csv"))
   }
 
+  def cooldown(num : Int) = Action.async{
+    (master ? SetCooldown(num)).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
+  }
+
+  def pause(num : Int) = Action.async{
+    (master ? SetPause(num)).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
+  }
 
 }
