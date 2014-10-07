@@ -16,7 +16,7 @@ class Slave extends Actor {
 
   override def receive: Receive = {
     case Ask(method, email) => {
-      Logger.info("Ask "+email)
+      Logger.info("Ask "+method.id+" "+email)
       val s = sender
       call(method, s, email)
     }
@@ -30,7 +30,9 @@ class Slave extends Actor {
     val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
       .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",email)).post("")
     result.onComplete({
-      case Success(r) => s ! Answer(method, email, r.status, r.body)
+      case Success(r) => {
+        s ! Answer(method, email, r.status, r.body)
+      }
       case Failure(e) => {
         Logger.error("Send error")
         e.printStackTrace()
