@@ -62,7 +62,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       lastBlock = false
       slaveActor ! Ask(Access, email)
     }
-    case a@Answer(Recovery, email, status, body) => {
+    case a@Answer(method, email, status, body) => {
       Logger.info("Good answer "+email+" "+status.toString)
       lastBlock = false
       write(email+","+{if(a.exists) "1" else "0"}+","+body+"\r\n", true)
