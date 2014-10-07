@@ -4,15 +4,22 @@ import akka.actor.{ActorRef, Actor}
 import akka.actor.Actor.Receive
 import play.api.libs.ws.WS
 import scala.util.{Failure, Success}
-import play.api.Logger
+import play.api.{Play, Logger}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.io.Source
 
 class Slave extends Actor {
   val url = "http://e.mail.ru/api/v1/user/password/restore"
   val mrimUrl = "http://e.mail.ru/api/v1/user/access/support"
 
-  val userAgent = "Mozilla/5.0 (Windows; U; Windows NT 6.0; ru; rv:1.9.1b4pre) Gecko/20090419 SeaMonkey/2.0b1pre"
+  import play.api.Play.current
+  var userAgents: Iterator[String] = Iterator.empty
+
+  def userAgent = {
+    if(!userAgents.hasNext) userAgents = Source.fromInputStream(Play.classloader.getResourceAsStream("userAgents.csv")).getLines()
+    userAgents.next()
+  }
 
   override def receive: Receive = {
     case Ask(method, email) => {
