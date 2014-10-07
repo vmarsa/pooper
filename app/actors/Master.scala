@@ -76,6 +76,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       sender ! StatusResp(cooldown, pause, processed, finished)
     case SetPause(num) =>
       pause = math.max(math.min(num, 100000), 5)
+      sender ! StatusResp(cooldown, pause, processed, finished)
   }
 
   private def write(line: String, append: Boolean) = {
