@@ -9,6 +9,7 @@ import scala.io.Source
 import play.api.Play
 import scala.concurrent.ExecutionContext.Implicits.global
 import play.api.Logger
+import java.util.Date
 
 /**
  * Created by DmiBaska on 06.10.2014.
@@ -30,6 +31,8 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
 
   var processed = 0
 
+  var start: Option[Date] = None
+
   import play.api.Play.current
   lazy val emails: Iterator[String] = Source.fromInputStream(Play.classloader.getResourceAsStream("emails.csv")).getLines()
 
@@ -38,6 +41,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       if(!launched) {
         Logger.info("launch")
         launched = true
+        start = Some(new Date())
         write("", false)
         self ! Next
       }
@@ -70,13 +74,19 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       self ! Next
     }
     case StatusReq =>
-      sender ! StatusResp(cooldown, pause, processed, finished)
+      sender ! statusMessage
     case SetCooldown(num) =>
       cooldown = math.max(math.min(num, 100000), 100)
-      sender ! StatusResp(cooldown, pause, processed, finished)
+      sender ! statusMessage
     case SetPause(num) =>
       pause = math.max(math.min(num, 100000), 5)
-      sender ! StatusResp(cooldown, pause, processed, finished)
+      sender ! statusMessage
+  }
+
+  private def statusMessage = {
+    val startMils = start.map(_.getTime)
+    val currentMils = new Date().getTime
+    StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed/(currentMils - s)*1000*60*60).getOrElse(0))
   }
 
   private def write(line: String, append: Boolean) = {
@@ -94,7 +104,7 @@ case object Next
 
 case object StatusReq
 
-case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean)
+case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean, throughputPerHour: Long)
 
 case class SetCooldown(cooldown: Int)
 
