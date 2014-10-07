@@ -69,7 +69,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
     case a@Answer(method, email, status, body) => {
       Logger.info("Good answer "+email+" "+status.toString)
       lastBlock = false
-      write(email+","+{if(a.exists) "1" else "0"}+","+body+"\r\n", true)
+      write(email :: {if(a.exists) "1" else "0"} :: body :: Nil mkString(";") + "\r\n", true)
       processed += 1
       self ! Next
     }

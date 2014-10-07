@@ -13,6 +13,8 @@ class Slave extends Actor {
   val url = "http://e.mail.ru/api/v1/user/password/restore"
   val mrimUrl = "http://e.mail.ru/api/v1/user/access/support"
 
+  val emailReg = """[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})""".r
+
   import play.api.Play.current
   var userAgents: Iterator[String] = Iterator.empty
 
@@ -30,22 +32,33 @@ class Slave extends Actor {
   }
 
   def call(method: Method, s: ActorRef, email: String) {
-    val methodUrl = method match {
-      case Recovery => url
-      case Access => mrimUrl
+    emailReg.findFirstIn(email) match {
+      case Some(extractedEmail) => {
+        Logger.info("Extracted email: "+ extractedEmail)
+        val methodUrl = method match {
+          case Recovery => url
+          case Access => mrimUrl
+        }
+        val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
+          .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",email)).post("")
+        result.onComplete({
+          case Success(r) => {
+            s ! Answer(method, extractedEmail, r.status, r.body)
+          }
+          case Failure(e) => {
+            Logger.error("Send error")
+            e.printStackTrace()
+            call(method, s, extractedEmail)
+          }
+        })
+      }
+      case None => {
+        Logger.info("Can't extract email")
+        s ! Answer(method, email, 904, "can't parse string")
+      }
     }
-    val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
-      .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",email)).post("")
-    result.onComplete({
-      case Success(r) => {
-        s ! Answer(method, email, r.status, r.body)
-      }
-      case Failure(e) => {
-        Logger.error("Send error")
-        e.printStackTrace()
-        call(method, s, email)
-      }
-    })
+
+
   }
 }
 
