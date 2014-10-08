@@ -32,7 +32,7 @@ class Slave extends Actor {
   }
 
   def call(method: Method, s: ActorRef, email: String) {
-    emailReg.findFirstIn(email) match {
+    emailReg.findFirstIn(email.toLowerCase) match {
       case Some(extractedEmail) => {
         Logger.info("Extracted email: "+ extractedEmail)
         val methodUrl = method match {
