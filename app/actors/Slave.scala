@@ -46,8 +46,8 @@ class Slave extends Actor {
           case Access => mrimUrl
         }
 
-        System.setProperty("http.proxyHost", proxy)
-        System.setProperty("http.proxyPort", "80")
+        //System.setProperty("http.proxyHost", proxy)
+        //System.setProperty("http.proxyPort", "80")
 
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
           .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
