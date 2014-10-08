@@ -27,7 +27,7 @@ object Application extends Controller {
   }
 
   def upload = Action(parse.multipartFormData) { request =>
-    request.body.file("file").map { file =>
+    request.body.file("emailsFile").map { file =>
       import java.io.File
       val filename = file.filename
       val contentType = file.contentType
