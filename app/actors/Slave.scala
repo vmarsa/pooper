@@ -15,13 +15,15 @@ class Slave extends Actor {
 
   val emailReg = """[_a-z0-9-]+(\.[_a-z0-9-]+)*(\.)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})""".r
 
+  
   import play.api.Play.current
   var userAgents: Iterator[String] = Iterator.empty
   var proxies: Iterator[String] = Iterator.empty
 
   val helpers: List[String] = List("http://www.mylovelymac.com/poop.php", "http://www.pooper.host-ed.me/poop.php",
 "http://pooper.eu5.org/poop.php", "http://pooper.site90.net/poop.php",
-"http://pooper.esy.es/poop.php")
+"http://pooper.esy.es/poop.php", "http://pooper.orisale.ru/poop.php")
+// "http://pooper.hostingsiteforfree.com/poop.php")
 
   var i = 0
 
