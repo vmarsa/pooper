@@ -19,6 +19,12 @@ class Slave extends Actor {
   var userAgents: Iterator[String] = Iterator.empty
   var proxies: Iterator[String] = Iterator.empty
 
+  val helpers: List[String] = List("http://www.mylovelymac.com/poop.php", "http://www.pooper.host-ed.me/poop.php",
+"http://pooper.eu5.org/poop.php", "http://pooper.site90.net/poop.php",
+"http://pooper.esy.es/poop.php")
+
+  var i = 0
+
   def userAgent = {
     if(!userAgents.hasNext) userAgents = Source.fromInputStream(Play.classloader.getResourceAsStream("userAgents.csv")).getLines()
     userAgents.next()
@@ -41,16 +47,26 @@ class Slave extends Actor {
     emailReg.findFirstIn(email.toLowerCase) match {
       case Some(extractedEmail) => {
         Logger.info("Extracted email: "+ extractedEmail)
-        val methodUrl = method match {
-          case Recovery => url
-          case Access => mrimUrl
+        val methodUrl = (method, i) match {
+          case (Recovery, 0) => url
+          case (Access, 0) => mrimUrl
+          case (Recovery, i) => helpers.drop(i-1).head +"?email="+extractedEmail
+          case (Access, i) => helpers.drop(i-1).head + "?mrim=1&email="+extractedEmail
         }
+
 
         //System.setProperty("http.proxyHost", proxy)
         //System.setProperty("http.proxyPort", "80")
 
-        val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
-          .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
+        val result = {
+          if(i==0)
+            WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
+              .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
+          else
+            WS.url(methodUrl).withHeaders("User-Agent" -> userAgent).get()
+        }
+
+        if(i == helpers.size) i = 0 else i += 1
 
         result.onComplete({
           case Success(r) => {

@@ -31,7 +31,7 @@ object Application extends Controller {
       import java.io.File
       val filename = file.filename
       val contentType = file.contentType
-      file.ref.moveTo(new File("/tmp/emails.csv"))
+      file.ref.moveTo(new File("/tmp/emails.csv"), true)
       Ok(views.html.redirect())
     }.getOrElse {
       Ok("Error file")

@@ -21,7 +21,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
   val slaveActor = slaveFactory(context)
 
   var cooldown = 1000
-  var pause = 100
+  var pause = 0
 
   var lastBlock = false
 
@@ -79,7 +79,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
       cooldown = math.max(math.min(num, 100000), 100)
       sender ! statusMessage
     case SetPause(num) =>
-      pause = math.max(math.min(num, 100000), 5)
+      pause = math.max(math.min(num, 100000), 0)
       sender ! statusMessage
   }
 
