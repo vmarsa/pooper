@@ -17,10 +17,16 @@ class Slave extends Actor {
 
   import play.api.Play.current
   var userAgents: Iterator[String] = Iterator.empty
+  var proxies: Iterator[String] = Iterator.empty
 
   def userAgent = {
     if(!userAgents.hasNext) userAgents = Source.fromInputStream(Play.classloader.getResourceAsStream("userAgents.csv")).getLines()
     userAgents.next()
+  }
+
+  def proxy = {
+    if(!proxies.hasNext) proxies = Source.fromInputStream(Play.classloader.getResourceAsStream("proxy")).getLines()
+    proxies.next()
   }
 
   override def receive: Receive = {
@@ -39,8 +45,13 @@ class Slave extends Actor {
           case Recovery => url
           case Access => mrimUrl
         }
+
+        System.setProperty("http.proxyHost", proxy)
+        System.setProperty("http.proxyPort", "80")
+
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
           .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
+
         result.onComplete({
           case Success(r) => {
             s ! Answer(method, email, r.status, r.body)
