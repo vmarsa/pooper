@@ -13,7 +13,7 @@ class Slave extends Actor {
   val url = "http://e.mail.ru/api/v1/user/password/restore"
   val mrimUrl = "http://e.mail.ru/api/v1/user/access/support"
 
-  val emailReg = """[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})""".r
+  val emailReg = """[_a-z0-9-]+(\.[_a-z0-9-]+)*(\.)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})""".r
 
   import play.api.Play.current
   var userAgents: Iterator[String] = Iterator.empty
