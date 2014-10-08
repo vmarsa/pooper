@@ -21,11 +21,27 @@ object Application extends Controller {
   implicit val timeout = Timeout(10 seconds)
 
   def index = {
-    Logger.info("Launching!")
-    master ! Launch
     Action.async{
       (master ? StatusReq).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
     }
+  }
+
+  def upload = Action(parse.multipartFormData) { request =>
+    request.body.file("file").map { file =>
+      import java.io.File
+      val filename = file.filename
+      val contentType = file.contentType
+      file.ref.moveTo(new File("/tmp/emails.csv"))
+      Ok(views.html.redirect())
+    }.getOrElse {
+      Ok("Error file")
+    }
+  }
+
+  def launch = Action {
+    Logger.info("Launching!")
+    master ! Launch
+    Ok(views.html.redirect())
   }
 
   def get = Action {

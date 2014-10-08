@@ -11,6 +11,15 @@
     </head>
     <body>
         <dl>
+            <dt>Upload file</dt>
+            <dd>
+@helper.form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
+    <input type="file" name="picture">
+    <p>
+        <input type="submit">
+    </p>
+}
+            </dd>
             <dt>Cooldown</dt>
             <dd>@status.cooldown</dd>
             <dt>Pause</dt>

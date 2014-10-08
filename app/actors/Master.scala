@@ -34,7 +34,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
   var start: Option[Date] = None
 
   import play.api.Play.current
-  lazy val emails: Iterator[String] = Source.fromInputStream(Play.classloader.getResourceAsStream("emails.csv")).getLines()
+  lazy val emails: Iterator[String] = Source.fromFile("/tmp/emails.csv").getLines()
 
   override def receive: Receive = {
     case Launch => {
