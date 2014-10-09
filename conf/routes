@@ -5,7 +5,7 @@
 # Home page
 GET     /                           controllers.Application.index
 GET     /launch                     controllers.Application.launch
-POST     /upload                     controllers.Application.upload
+POST    /upload                     controllers.Application.upload
 GET     /result/get                 controllers.Application.get
 GET     /cooldown/set/:num          controllers.Application.cooldown(num: Int)
 GET     /pause/set/:num             controllers.Application.pause(num: Int)
