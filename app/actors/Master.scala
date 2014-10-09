@@ -14,16 +14,31 @@ import java.util.Date
 /**
  * Created by DmiBaska on 06.10.2014.
  */
-class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
+class Master(slaveFactory: ActorRefFactory => ActorRef,
+             remoteFactory: (ActorRefFactory, String) => ActorRef) extends Actor {
 
-  def this() = this(_.actorOf(Props[Slave], "selfie"))
+  val helpers: List[String] =
+    List("http://www.mylovelymac.com/poop.php",
+      "http://www.pooper.host-ed.me/poop.php",
+      "http://pooper.eu5.org/poop.php",
+      "http://pooper.esy.es/poop.php",
+      "http://pooper.orisale.ru/poop.php")
+
+  // "http://pooper.site90.net/poop.php",
+  // "http://pooper.hostingsiteforfree.com/poop.php")
+
+  def this() = this(_.actorOf(Props[Slave], "selfie"),
+    (f, url) => f.actorOf(Props(new RemoteSlave(url))))
 
   val slaveActor = slaveFactory(context)
+
+  val slaves = slaveActor +: helpers.map(url => remoteFactory.apply(context, url))
+  var blocks = Map[ActorRef, Boolean]()
 
   var cooldown = 1000
   var pause = 0
 
-  var lastBlock = false
+  var lastBlock = Map[ActorRef, Boolean]()
 
   var launched = false
 
@@ -43,35 +58,36 @@ class Master(slaveFactory: ActorRefFactory => ActorRef) extends Actor {
         launched = true
         start = Some(new Date())
         write("", false)
-        self ! Next
+        slaves.foreach(_ ! Ready)
       }
       else Logger.info("Already launched")
     }
     case Next => {
       if(emails.hasNext) {
         val email = emails.next()
-        Akka.system.scheduler.scheduleOnce(pause milliseconds, slaveActor, Ask(Recovery, email))
+        Akka.system.scheduler.scheduleOnce(pause milliseconds, sender, Ask(Recovery, email))
       }
       else
         finished = true
     }
     case a@Answer(method, email, status, _) if status == 403 || a.isBlock => {
       Logger.info("Bad "+method.id+" answer "+email+" "+status.toString)
-      if(lastBlock && cooldown < 100000) cooldown *= 2
-      lastBlock = true
-      Akka.system.scheduler.scheduleOnce(cooldown milliseconds, slaveActor, Ask(method, email))
+      if(lastBlock.getOrElse(sender, false) && cooldown < 100000) cooldown *= 2
+      lastBlock += (sender -> true)
+      Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ask(method, email))
     }
     case a@Answer(Recovery, email, status, body) if a.isMrim => {
       Logger.info("Mrim answer "+email+" "+status.toString)
-      lastBlock = false
-      slaveActor ! Ask(Access, email)
+      lastBlock -= sender
+      sender ! Ask(Access, email)
     }
     case a@Answer(method, email, status, body) => {
       Logger.info("Good answer "+email+" "+status.toString)
-      lastBlock = false
+      lastBlock -= sender
       write((email :: {if(a.exists) "1" else "0"} :: body :: Nil).mkString(";") + "\r\n", true)
       processed += 1
-      self ! Next
+      sender ! Ready
+
     }
     case StatusReq =>
       sender ! statusMessage
