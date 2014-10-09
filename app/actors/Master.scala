@@ -73,7 +73,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
         processed = 0
         finished = false
         vacant = List.empty
-        slavesStats = Map()
+        slavesStats = slavesMap.map(s => s._1 -> SlaveStat())
         lastBlock = Map[ActorRef, Boolean]()
         start = Some(new Date())
         write("", false)
