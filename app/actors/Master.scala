@@ -24,9 +24,9 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       "http://pooper.esy.es/poop.php",
       "http://pooper.orisale.ru/poop.php",
       "http://pooper.hostingsiteforfree.com/poop.php",
-      "http://pooper.bugs3.com/poop.php")
-
-  // "http://pooper.site90.net/poop.php")
+      "http://pooper.bugs3.com/poop.php",
+      "http://pooper.site90.net/poop.php",
+      "http://pooper.1eko.com/poop.php")
 
   def this() = this(_.actorOf(Props[Slave], "selfie"),
     (f, url) => f.actorOf(Props(new RemoteSlave(url))))
@@ -92,14 +92,14 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
           finished = true
       }
     }
-    case a@Answer(method, email, status, _) if status == 403 || a.isBlock => {
-      Logger.info("Bad "+method.id+" answer "+email+" "+status.toString)
+    case BlockAnswer(method, email) => {
+      Logger.info("Bad "+method.id+" answer "+email)
       if(lastBlock.getOrElse(sender, false) && cooldown < 100000) cooldown *= 2
       lastBlock += (sender -> true)
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ask(method, email))
     }
-    case a@Answer(Recovery, email, status, body) if a.isMrim => {
-      Logger.info("Mrim answer "+email+" "+status.toString)
+    case MrimAnswer(email) => {
+      Logger.info("Mrim answer "+email)
       lastBlock -= sender
       sender ! Ask(Access, email)
     }

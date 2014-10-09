@@ -35,13 +35,16 @@ trait SlaveHeritage extends Actor {
   def processResult(result: Future[Response], s: ActorRef, email: String, method: Method) = result.onComplete({
     case Success(r) => {
       val body = bodyExtractor.findFirstIn(r.body)
-      body match {
-        case Some(b) => s ! Answer(method, email, r.status, b)
-        case None => {
-          Logger.error("UNEXTRACTED BODY")
-          s ! GiveAnotherSlave(email)
+      if (r.body.contains("status\":403")) s ! BlockAnswer(method, email)
+      else if (r.body.contains("error\":\"not_available_for_mrim")) s ! MrimAnswer
+      else
+        body match {
+          case Some(b) => s ! Answer(method, email, r.status, b)
+          case None => {
+            Logger.error("UNEXTRACTED BODY")
+            s ! GiveAnotherSlave(email)
+          }
         }
-      }
     }
     case Failure(e) => {
       Logger.error("Send error")
@@ -112,12 +115,12 @@ case class Ask(method: Method, email: String)
 
 case class GiveAnotherSlave(email: String)
 
+case class MrimAnswer(email: String)
+
+case class BlockAnswer(method: Method, email: String)
+
 case class Answer(method: Method, email: String, status: Int, body: String) {
-  def isBlock = body.contains("status\":403")
-
-  def isMrim = body.contains("error\":\"not_available_for_mrim")
-
-  def exists: Boolean = status == 200 && !isBlock && body.contains("status\":200")
+  def exists: Boolean = status == 200 && body.contains("status\":200")
 }
 
 sealed trait Method {
