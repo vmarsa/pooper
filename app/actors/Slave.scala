@@ -2,16 +2,19 @@ package actors
 
 import akka.actor.{Actor, ActorRef}
 import akka.actor.Actor.Receive
-import play.api.libs.ws.WS
+import play.api.libs.ws.{Response, WS}
 import scala.util.{Failure, Success}
 import play.api.{Play, Logger}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
+import scala.concurrent.Future
+import play.api.mvc.Request
 
 trait SlaveHeritage extends Actor {
   val emailReg = """[_a-z0-9-]+(\.[_a-z0-9-]+)*(\.)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})""".r
   var userAgents: Iterator[String] = Iterator.empty
+  val bodyExtractor = """\{"body.*"htmlencoded":false\}""".r
   import play.api.Play.current
   def userAgent = {
     if(!userAgents.hasNext) userAgents = Source.fromInputStream(Play.classloader.getResourceAsStream("userAgents.csv")).getLines()
@@ -28,6 +31,24 @@ trait SlaveHeritage extends Actor {
   }
 
   def call(method: Method, sender: ActorRef, email: String)
+
+  def processResult(result: Future[Response], s: ActorRef, email: String, method: Method) = result.onComplete({
+    case Success(r) => {
+      val body = bodyExtractor.findFirstIn(r.body)
+      body match {
+        case Some(b) => s ! Answer(method, email, r.status, b)
+        case None => {
+          Logger.error("UNEXTRACTED BODY")
+          s ! GiveAnotherSlave(email)
+        }
+      }
+    }
+    case Failure(e) => {
+      Logger.error("Send error")
+      e.printStackTrace()
+      s ! GiveAnotherSlave(email)
+    }
+  })
 }
 
 class Slave extends SlaveHeritage {
@@ -52,16 +73,7 @@ class Slave extends SlaveHeritage {
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
               .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
 
-        result.onComplete({
-          case Success(r) => {
-            s ! Answer(method, email, r.status, r.body)
-          }
-          case Failure(e) => {
-            Logger.error("Send error for email" + email)
-            e.printStackTrace()
-            call(method, s, email)
-          }
-        })
+        processResult(result, s, email, method)
       }
       case None => {
         Logger.info("Can't extract email")
@@ -74,7 +86,6 @@ class Slave extends SlaveHeritage {
 }
 
 class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
-  val bodyExtractor = """\{"body.*"htmlencoded":false\}""".r
   def call(method: Method, s: ActorRef, email: String) {
     emailReg.findFirstIn(email.toLowerCase) match {
       case Some(extractedEmail) => {
@@ -85,23 +96,7 @@ class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
         }
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent).get()
 
-        result.onComplete({
-          case Success(r) => {
-            val body = bodyExtractor.findFirstIn(r.body)
-            body match {
-              case Some(b) => s ! Answer(method, email, r.status, b)
-              case None => {
-                Logger.error("UNEXTRACTED BODY")
-                s ! Answer(method, email, r.status, r.body)
-              }
-            }
-          }
-          case Failure(e) => {
-            Logger.error("Send error")
-            e.printStackTrace()
-            call(method, s, email)
-          }
-        })
+        processResult(result, s, email, method)
       }
       case None => {
         Logger.info("Can't extract email")
@@ -114,6 +109,8 @@ class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
 case object Ready
 
 case class Ask(method: Method, email: String)
+
+case class GiveAnotherSlave(email: String)
 
 case class Answer(method: Method, email: String, status: Int, body: String) {
   def isBlock = body.contains("status\":403")

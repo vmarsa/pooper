@@ -52,6 +52,10 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   import play.api.Play.current
   lazy val emails: Iterator[String] = Source.fromFile("/tmp/emails.csv").getLines()
 
+  var giveAnotherSlave: List[(ActorRef, String)] = Nil
+
+  var vacant: List[ActorRef] = Nil
+
   override def receive: Receive = {
     case Launch => {
       if(!launched) {
@@ -63,13 +67,30 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       }
       else Logger.info("Already launched")
     }
+    case GiveAnotherSlave(email) => {
+      Logger.info("Give another slave: "+ email)
+      giveAnotherSlave :+= (sender, email)
+      Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ready)
+    }
     case Next => {
-      if(emails.hasNext) {
-        val email = emails.next()
+      if(giveAnotherSlave.nonEmpty || emails.hasNext) {
+        val (email, notSendTo) = {
+          if(giveAnotherSlave.nonEmpty) {
+            val (ns, em) = giveAnotherSlave.head
+            giveAnotherSlave = giveAnotherSlave.tail
+            Logger.info("Giving from stack: "+ em)
+            (em, Some(ns))
+          }
+          else (emails.next(), None)
+        }
+        //TODO not send to
         Akka.system.scheduler.scheduleOnce(pause milliseconds, sender, Ask(Recovery, email))
       }
-      else
-        finished = true
+      else {
+        vacant :+= sender
+        if(vacant.size == slaves.size)
+          finished = true
+      }
     }
     case a@Answer(method, email, status, _) if status == 403 || a.isBlock => {
       Logger.info("Bad "+method.id+" answer "+email+" "+status.toString)
