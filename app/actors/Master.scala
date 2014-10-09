@@ -99,7 +99,15 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
           else (emails.next(), None)
         }
         //TODO not send to
-        Akka.system.scheduler.scheduleOnce(pause milliseconds, sender, Ask(Recovery, email))
+        val target = if(notSendTo == Some(sender) && vacant.nonEmpty) {
+          val target = vacant.head
+          vacant = vacant.tail :+ sender
+          Logger.info("Sending to another sender")
+          target
+        }
+        else sender
+
+        Akka.system.scheduler.scheduleOnce(pause milliseconds, target, Ask(Recovery, email))
       }
       else {
         vacant :+= sender
