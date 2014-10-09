@@ -21,7 +21,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
   val helpers: List[String] =
     List("http://www.mylovelymac.com/poop.php",
-      "http://www.pooper.host-ed.me/poop.php",
+      //"http://www.pooper.host-ed.me/poop.php",
       "http://pooper.eu5.org/poop.php",
       "http://pooper.esy.es/poop.php",
       "http://pooper.orisale.ru/poop.php",
@@ -120,7 +120,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
     case BlockAnswer(method, email) => {
       Logger.info("Bad "+method.id+" answer "+email)
       updateStat(sender, c => c.copy(bad = c.bad + 1))
-      if(lastBlock.getOrElse(sender, false) && cooldown < 100000) cooldown *= 2
+      //if(lastBlock.getOrElse(sender, false) && cooldown < 100000) cooldown *= 2
       lastBlock += (sender -> true)
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ask(method, email))
     }
@@ -142,10 +142,8 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       sender ! statusMessage
     case SetCooldown(num) =>
       cooldown = math.max(math.min(num, 100000), 100)
-      sender ! statusMessage
     case SetPause(num) =>
       pause = math.max(math.min(num, 100000), 0)
-      sender ! statusMessage
   }
 
   private def statusMessage = {

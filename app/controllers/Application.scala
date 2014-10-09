@@ -48,12 +48,14 @@ object Application extends Controller {
     Ok.sendFile(new java.io.File("result.csv"))
   }
 
-  def cooldown(num : Int) = Action.async{
-    (master ? SetCooldown(num)).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
+  def cooldown(num : Int) = Action{
+    master ! SetCooldown(num)
+    Ok(views.html.redirect())
   }
 
-  def pause(num : Int) = Action.async{
-    (master ? SetPause(num)).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
+  def pause(num : Int) = Action{
+    master ! SetPause(num)
+    Ok(views.html.redirect())
   }
 
 }
