@@ -74,6 +74,7 @@ class Slave extends SlaveHeritage {
 }
 
 class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
+  val bodyExtractor = """\{"body.*"htmlencoded":false\}""".r
   def call(method: Method, s: ActorRef, email: String) {
     emailReg.findFirstIn(email.toLowerCase) match {
       case Some(extractedEmail) => {
@@ -82,11 +83,18 @@ class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
           case Recovery => remoteUrl +"?email="+extractedEmail
           case Access => remoteUrl + "?mrim=1&email="+extractedEmail
         }
-        val result = WS.url(remoteUrl).withHeaders("User-Agent" -> userAgent).get()
+        val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent).get()
 
         result.onComplete({
           case Success(r) => {
-            s ! Answer(method, email, r.status, r.body)
+            val body = bodyExtractor.findFirstIn(r.body)
+            body match {
+              case Some(b) => s ! Answer(method, email, r.status, b)
+              case None => {
+                Logger.error("UNEXTRACTED BODY")
+                s ! Answer(method, email, r.status, r.body)
+              }
+            }
           }
           case Failure(e) => {
             Logger.error("Send error")

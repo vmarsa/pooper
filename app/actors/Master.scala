@@ -22,10 +22,11 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       "http://www.pooper.host-ed.me/poop.php",
       "http://pooper.eu5.org/poop.php",
       "http://pooper.esy.es/poop.php",
-      "http://pooper.orisale.ru/poop.php")
+      "http://pooper.orisale.ru/poop.php",
+      "http://pooper.hostingsiteforfree.com/poop.php",
+      "http://pooper.bugs3.com/poop.php")
 
-  // "http://pooper.site90.net/poop.php",
-  // "http://pooper.hostingsiteforfree.com/poop.php")
+  // "http://pooper.site90.net/poop.php")
 
   def this() = this(_.actorOf(Props[Slave], "selfie"),
     (f, url) => f.actorOf(Props(new RemoteSlave(url))))
