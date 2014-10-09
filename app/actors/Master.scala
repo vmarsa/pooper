@@ -14,6 +14,8 @@ import java.util.Date
 /**
  * Created by DmiBaska on 06.10.2014.
  */
+case class SlaveStat(throuputPerHour: Long = 0L, good: Long = 0L, bad: Long = 0L, mrim: Long = 0L, toAnother: Long = 0L)
+
 class Master(slaveFactory: ActorRefFactory => ActorRef,
              remoteFactory: (ActorRefFactory, String) => ActorRef) extends Actor {
 
@@ -32,8 +34,10 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
     (f, url) => f.actorOf(Props(new RemoteSlave(url))))
 
   val slaveActor = slaveFactory(context)
-
-  val slaves = slaveActor +: helpers.map(url => remoteFactory.apply(context, url))
+  val slavesTuples = ("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url))
+  val slavesMap = slavesTuples.toMap.map(_.swap)
+  var slavesStats = slavesMap.map(s => s._1 -> SlaveStat())
+  val slaves = slavesTuples.map(_._2)
   var blocks = Map[ActorRef, Boolean]()
 
   var cooldown = 1000
@@ -56,11 +60,21 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
   var vacant: List[ActorRef] = Nil
 
+  def updateStat(s: ActorRef, fun: SlaveStat => SlaveStat) = {
+    val current = slavesStats(s)
+    slavesStats += s -> fun(current)
+  }
+
   override def receive: Receive = {
     case Launch => {
       if(!launched) {
         Logger.info("launch")
         launched = true
+        processed = 0
+        finished = false
+        vacant = List.empty
+        slavesStats = Map()
+        lastBlock = Map[ActorRef, Boolean]()
         start = Some(new Date())
         write("", false)
         slaves.foreach(_ ! Ready)
@@ -69,6 +83,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
     }
     case GiveAnotherSlave(email) => {
       Logger.info("Give another slave: "+ email)
+      updateStat(sender, c => c.copy(toAnother = c.toAnother + 1))
       giveAnotherSlave :+= (sender, email)
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ready)
     }
@@ -88,28 +103,32 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       }
       else {
         vacant :+= sender
-        if(vacant.size == slaves.size)
+        if(vacant.size == slaves.size) {
           finished = true
+          launched = false
+        }
       }
     }
     case BlockAnswer(method, email) => {
       Logger.info("Bad "+method.id+" answer "+email)
+      updateStat(sender, c => c.copy(bad = c.bad + 1))
       if(lastBlock.getOrElse(sender, false) && cooldown < 100000) cooldown *= 2
       lastBlock += (sender -> true)
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ask(method, email))
     }
     case MrimAnswer(email) => {
       Logger.info("Mrim answer "+email)
+      updateStat(sender, c => c.copy(mrim = c.mrim + 1))
       lastBlock -= sender
       sender ! Ask(Access, email)
     }
     case a@Answer(method, email, status, body) => {
       Logger.info("Good answer "+email+" "+status.toString)
+      updateStat(sender, c => c.copy(good = c.good + 1))
       lastBlock -= sender
       write((email :: {if(a.exists) "1" else "0"} :: body :: Nil).mkString(";") + "\r\n", true)
       processed += 1
       sender ! Ready
-
     }
     case StatusReq =>
       sender ! statusMessage
@@ -124,7 +143,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   private def statusMessage = {
     val startMils = start.map(_.getTime)
     val currentMils = new Date().getTime
-    StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0))
+    StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0), slavesTuples.map(s => s._1 -> slavesStats(s._2).copy(throuputPerHour = startMils.map(k => slavesStats(s._2).good*1000*60*60/(currentMils - k)).getOrElse(0) )))
   }
 
   private def write(line: String, append: Boolean) = {
@@ -142,7 +161,7 @@ case object Next
 
 case object StatusReq
 
-case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean, throughputPerHour: Long)
+case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean, throughputPerHour: Long, slavesStat: List[(String, SlaveStat)])
 
 case class SetCooldown(cooldown: Int)
 

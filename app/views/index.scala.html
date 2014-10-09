@@ -10,6 +10,7 @@
     <script src="@routes.Assets.at("javascripts/jquery-1.9.0.min.js")" type="text/javascript"></script>
     </head>
     <body>
+         <h6>data</h6>
         <dl>
             <dt>Upload file</dt>
             <dd>
@@ -32,6 +33,23 @@
             <dd>@status.throughputPerHour</dd>
             <dt>Results<dt>
             <dd><a href="/result/get" target="_blank">Download results file</a></dd>
-        </dl>
+</dl>
+            <h6> slaves</h6>
+
+            <table>
+            <tr><th>NAME></th><th>TPH</th><th>G</th><th>B</th><th>M</th><th>TAN</th></tr>
+@for(stat <- status.slavesStat) {
+  <tr>
+    <td>@stat._1</td>
+    <td>@stat._2.throuputPerHour</td>
+    <td>@stat._2.good</td>
+    <td>@stat._2.bad</td>
+    <td>@stat._2.mrim</td>
+    <td>@stat._2.toAnother</td>
+  </tr>
+}
+
+</table>
+
     </body>
 </html>
