@@ -5,11 +5,18 @@ import akka.actor.Actor.Receive
 import play.api.libs.ws.{Response, WS}
 import scala.util.{Failure, Success}
 import play.api.{Play, Logger}
+import java.net._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.concurrent.Future
 import play.api.mvc.Request
+import com.ning.http.client.{ProxyServer, AsyncHttpClientConfig}
+import javax.net.ssl.HttpsURLConnection
+import sun.net.www.protocol.https.HttpsURLConnectionImpl
+import java.io.{InputStreamReader, BufferedReader, OutputStreamWriter}
+
+case class Resp(status: Int, body: String)
 
 trait SlaveHeritage extends Actor {
   val emailReg = """[_a-z0-9-]+(\.[_a-z0-9-]+)*(\.)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})""".r
@@ -32,7 +39,7 @@ trait SlaveHeritage extends Actor {
 
   def call(method: Method, sender: ActorRef, email: String)
 
-  def processResult(result: Future[Response], s: ActorRef, email: String, method: Method) = result.onComplete({
+  def processResult(result: Future[Resp], s: ActorRef, email: String, method: Method) = result.onComplete({
     case Success(r) => {
       val body = bodyExtractor.findFirstIn(r.body)
       if (r.body.contains("status\":403")) s ! BlockAnswer(method, email)
@@ -54,9 +61,13 @@ trait SlaveHeritage extends Actor {
   })
 }
 
-class Slave extends SlaveHeritage {
+object MailRuUrls {
   val url = "http://e.mail.ru/api/v1/user/password/restore"
   val mrimUrl = "http://e.mail.ru/api/v1/user/access/support"
+}
+
+class Slave extends SlaveHeritage {
+
 
 
 
@@ -65,8 +76,8 @@ class Slave extends SlaveHeritage {
       case Some(extractedEmail) => {
         Logger.info("Extracted email: "+ extractedEmail)
         val methodUrl = method match {
-          case Recovery => url
-          case Access => mrimUrl
+          case Recovery => MailRuUrls.url
+          case Access => MailRuUrls.mrimUrl
         }
 
 
@@ -76,7 +87,7 @@ class Slave extends SlaveHeritage {
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
               .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
 
-        processResult(result, s, email, method)
+        processResult(result.map(r => Resp(r.status, r.body)), s, email, method)
       }
       case None => {
         Logger.info("Can't extract email")
@@ -99,7 +110,7 @@ class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
         }
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent).get()
 
-        processResult(result, s, email, method)
+        processResult(result.map(r => Resp(r.status, r.body)), s, email, method)
       }
       case None => {
         Logger.info("Can't extract email")
@@ -132,5 +143,68 @@ case object Recovery extends Method {
 }
 case object Access extends Method {
   val id = "access"
+}
+
+class ProxySlave extends SlaveHeritage {
+
+  var proxies: Iterator[String] = Iterator.empty
+
+  import play.api.Play.current
+
+
+  def proxy = {
+    if(!proxies.hasNext) proxies = Source.fromInputStream(Play.classloader.getResourceAsStream("proxy")).getLines()
+    val list = proxies.next().split(":")
+    list(0) -> list(1)
+  }
+
+  def call(method: Method, s: ActorRef, email: String) {
+    emailReg.findFirstIn(email.toLowerCase) match {
+      case Some(extractedEmail) => {
+        Logger.info("Extracted email: "+ extractedEmail)
+        val result = Future {
+          val p = proxy
+
+
+          val proxyAddress = new InetSocketAddress(p._1, p._2.toInt)
+          val javaProxy = new Proxy(Proxy.Type.HTTP, proxyAddress)
+
+          val methodUrl = (method match {
+            case Recovery => MailRuUrls.url
+            case Access => MailRuUrls.mrimUrl
+          }).replaceAll("http:", "https:")
+
+          val connection = new URL(methodUrl).openConnection(javaProxy).asInstanceOf[HttpsURLConnection]
+
+          connection.setDoOutput(true)
+          connection.setDoInput(true)
+          connection.setRequestMethod("POST")
+          connection.setRequestProperty("User-Agent", userAgent)
+          val out = connection.getOutputStream()
+          val owriter = new OutputStreamWriter(out)
+
+          owriter.write("ajax_call=1&x-email=&htmlencoded=false&api=1&token=&email=" + extractedEmail);
+          owriter.flush()
+          owriter.close()
+
+          val in = new BufferedReader(
+            new InputStreamReader(connection.getInputStream))
+          val response = new StringBuffer
+
+          while (in.readLine != null) {
+            response.append(in.readLine)
+          }
+          val r = response.toString
+          println(r)
+          Resp(200, r)
+        }
+        processResult(result, s, email, method)
+      }
+      case None => {
+        Logger.info("Can't extract email")
+        s ! Answer(method, email, 904, "can't parse string")
+      }
+    }
+  }
 }
 

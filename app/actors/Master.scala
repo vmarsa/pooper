@@ -17,7 +17,8 @@ import java.util.Date
 case class SlaveStat(throuputPerHour: Long = 0L, good: Long = 0L, bad: Long = 0L, mrim: Long = 0L, toAnother: Long = 0L)
 
 class Master(slaveFactory: ActorRefFactory => ActorRef,
-             remoteFactory: (ActorRefFactory, String) => ActorRef) extends Actor {
+             remoteFactory: (ActorRefFactory, String) => ActorRef,
+              proxyFactory: ActorRefFactory => ActorRef) extends Actor {
 
   val helpers: List[String] =
     List("http://www.mylovelymac.com/poop.php",
@@ -31,10 +32,12 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       "http://pooper.1eko.com/poop.php")
 
   def this() = this(_.actorOf(Props[Slave], "selfie"),
-    (f, url) => f.actorOf(Props(new RemoteSlave(url))))
+    (f, url) => f.actorOf(Props(new RemoteSlave(url))),
+    _.actorOf(Props[ProxySlave], "proxy")
+    )
 
   val slaveActor = slaveFactory(context)
-  val slavesTuples = ("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url))
+  val slavesTuples = ("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url)) :+ ("PROXY", proxyFactory(context))
   val slavesMap = slavesTuples.toMap.map(_.swap)
   var slavesStats = slavesMap.map(s => s._1 -> SlaveStat())
   val slaves = slavesTuples.map(_._2)
