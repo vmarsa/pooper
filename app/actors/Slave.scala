@@ -145,28 +145,17 @@ case object Access extends Method {
   val id = "access"
 }
 
-class ProxySlave extends SlaveHeritage {
-
-  var proxies: Iterator[String] = Iterator.empty
-
-  import play.api.Play.current
-
-
-  def proxy = {
-    if(!proxies.hasNext) proxies = Source.fromInputStream(Play.classloader.getResourceAsStream("proxy")).getLines()
-    val list = proxies.next().split(":")
-    list(0) -> list(1)
-  }
+class ProxySlave(proxy: String) extends SlaveHeritage {
 
   def call(method: Method, s: ActorRef, email: String) {
     emailReg.findFirstIn(email.toLowerCase) match {
       case Some(extractedEmail) => {
         Logger.info("Extracted email: "+ extractedEmail)
         val result = Future {
-          val p = proxy
+          val host = proxy.split(":")(0)
+          val port = proxy.split(":")(1).toInt
 
-
-          val proxyAddress = new InetSocketAddress(p._1, p._2.toInt)
+          val proxyAddress = new InetSocketAddress(host, port)
           val javaProxy = new Proxy(Proxy.Type.HTTP, proxyAddress)
 
           val methodUrl = (method match {
@@ -174,11 +163,11 @@ class ProxySlave extends SlaveHeritage {
             case Access => MailRuUrls.mrimUrl
           }).replaceAll("http:", "https:")
 
-          val connection = new URL(methodUrl).openConnection(javaProxy).asInstanceOf[HttpsURLConnection]
+          val connection = new URL(methodUrl).openConnection(javaProxy)//.asInstanceOf[HttpsURLConnection]
 
           connection.setDoOutput(true)
           connection.setDoInput(true)
-          connection.setRequestMethod("POST")
+          //connection.setRequestMethod("POST")
           connection.setRequestProperty("User-Agent", userAgent)
           val out = connection.getOutputStream()
           val owriter = new OutputStreamWriter(out)

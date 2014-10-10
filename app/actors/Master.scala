@@ -18,7 +18,7 @@ case class SlaveStat(throuputPerHour: Long = 0L, good: Long = 0L, bad: Long = 0L
 
 class Master(slaveFactory: ActorRefFactory => ActorRef,
              remoteFactory: (ActorRefFactory, String) => ActorRef,
-              proxyFactory: ActorRefFactory => ActorRef) extends Actor {
+              proxyFactory: (ActorRefFactory, String) => ActorRef) extends Actor {
 
   val helpers: List[String] =
     List("http://www.mylovelymac.com/poop.php",
@@ -33,11 +33,13 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
   def this() = this(_.actorOf(Props[Slave], "selfie"),
     (f, url) => f.actorOf(Props(new RemoteSlave(url))),
-    _.actorOf(Props[ProxySlave], "proxy")
+    (f, p) => f.actorOf(Props(new ProxySlave(p)))
     )
+  import play.api.Play.current
+  val proxies = Source.fromInputStream(Play.classloader.getResourceAsStream("proxy")).getLines().toList
 
   val slaveActor = slaveFactory(context)
-  val slavesTuples = ("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url)) :+ ("PROXY", proxyFactory(context))
+  val slavesTuples = (("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url))) ++ proxies.map(p => p -> proxyFactory(context, p))
   val slavesMap = slavesTuples.toMap.map(_.swap)
   var slavesStats = slavesMap.map(s => s._1 -> SlaveStat())
   val slaves = slavesTuples.map(_._2)
@@ -56,8 +58,10 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
   var start: Option[Date] = None
 
-  import play.api.Play.current
+  
   lazy val emails: Iterator[String] = Source.fromFile("/tmp/emails.csv").getLines()
+
+
 
   var giveAnotherSlave: List[(ActorRef, String)] = Nil
 
