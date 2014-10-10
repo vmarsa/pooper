@@ -158,16 +158,16 @@ class ProxySlave(proxy: String) extends SlaveHeritage {
           val proxyAddress = new InetSocketAddress(host, port)
           val javaProxy = new Proxy(Proxy.Type.HTTP, proxyAddress)
 
-          val methodUrl = method match {
+          val methodUrl = (method match {
             case Recovery => MailRuUrls.url
             case Access => MailRuUrls.mrimUrl
-          }
+          }).replaceAll("http:","https:")
 
-          val connection = new URL(methodUrl).openConnection(javaProxy)//.asInstanceOf[HttpsURLConnection]
+          val connection = new URL(methodUrl).openConnection(javaProxy).asInstanceOf[HttpsURLConnection]
 
           connection.setDoOutput(true)
           connection.setDoInput(true)
-          //connection.setRequestMethod("POST")
+          connection.setRequestMethod("POST")
           connection.setRequestProperty("User-Agent", userAgent)
           val out = connection.getOutputStream()
           val owriter = new OutputStreamWriter(out)
