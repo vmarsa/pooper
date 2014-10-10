@@ -58,7 +58,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
   var start: Option[Date] = None
 
-  
+
   lazy val emails: Iterator[String] = Source.fromFile("/tmp/emails.csv").getLines()
 
 
