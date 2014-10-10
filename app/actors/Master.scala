@@ -39,7 +39,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   val proxies = Source.fromInputStream(Play.classloader.getResourceAsStream("proxy")).getLines().toList
 
   val slaveActor = slaveFactory(context)
-  val slavesTuples = (("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url))) ++ proxies.map(p => p -> proxyFactory(context, p))
+  val slavesTuples = (("SELF",slaveActor) +: helpers.map(url => url -> remoteFactory.apply(context, url)))// ++ proxies.map(p => p -> proxyFactory(context, p))
   val slavesMap = slavesTuples.toMap.map(_.swap)
   var slavesStats = slavesMap.map(s => s._1 -> SlaveStat())
   val slaves = slavesTuples.map(_._2)
