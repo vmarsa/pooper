@@ -12,9 +12,11 @@ import scala.io.Source
 import scala.concurrent.Future
 import play.api.mvc.Request
 import com.ning.http.client.{ProxyServer, AsyncHttpClientConfig}
-import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.{SSLContext, X509TrustManager, TrustManager, HttpsURLConnection}
 import sun.net.www.protocol.https.HttpsURLConnectionImpl
 import java.io.{InputStreamReader, BufferedReader, OutputStreamWriter}
+import java.security.cert.X509Certificate
+import java.security.SecureRandom
 
 case class Resp(status: Int, body: String)
 
@@ -146,6 +148,25 @@ case object Access extends Method {
 }
 
 class ProxySlave(proxy: String) extends SlaveHeritage {
+
+  val trustAllCerts = List[TrustManager](new X509TrustManager(){
+
+    override def getAcceptedIssuers: Array[X509Certificate] = List[X509Certificate]().toArray
+
+    override def checkClientTrusted(p1: Array[X509Certificate], p2: String): Unit = {}
+
+    override def checkServerTrusted(p1: Array[X509Certificate], p2: String): Unit = {}
+
+  }).toArray
+
+  // Install the all-trusting trust manager
+  try {
+    val sc = SSLContext.getInstance("TLS");
+    sc.init(null, trustAllCerts, new SecureRandom());
+    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+  } catch {
+    case e => {}
+  }
 
   def call(method: Method, s: ActorRef, email: String) {
     emailReg.findFirstIn(email.toLowerCase) match {
