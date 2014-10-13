@@ -66,8 +66,8 @@ trait SlaveHeritage extends Actor {
 }
 
 object MailRuUrls {
-  val url = "http://e.mail.ru/api/v1/user/password/restore"
-  val mrimUrl = "http://e.mail.ru/api/v1/user/access/support"
+  val url = "https://e.mail.ru/api/v1/user/password/restore"
+  val mrimUrl = "https://e.mail.ru/api/v1/user/access/support"
 }
 
 class Slave extends SlaveHeritage {
