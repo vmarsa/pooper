@@ -31,10 +31,8 @@ trait SlaveHeritage extends Actor {
     userAgents.next()
   }
 
-  var lastSent: Long = 0L
-
   override def receive: Actor.Receive = {
-    case Ready => sender ! Next(lastSent)
+    case Ready => sender ! Next
     case Ask(method, email) => {
       Logger.info("Ask "+method.id+" "+email)
       val s = sender
@@ -86,7 +84,6 @@ class Slave extends SlaveHeritage {
           case Access => MailRuUrls.mrimUrl
         }
 
-        lastSent = new Date().getTime
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent)
               .withQueryString(("ajax_call","1"),("x-email",""),("htmlencoded","false"),("api","1"),("token",""),("email",extractedEmail)).post("")
 
@@ -111,7 +108,6 @@ class RemoteSlave(remoteUrl: String) extends SlaveHeritage {
           case Recovery => remoteUrl +"?email="+extractedEmail
           case Access => remoteUrl + "?mrim=1&email="+extractedEmail
         }
-        lastSent = new Date().getTime
         val result = WS.url(methodUrl).withHeaders("User-Agent" -> userAgent).get()
 
         processResult(result.map(r => Resp(r.status, r.body)), s, email, method)

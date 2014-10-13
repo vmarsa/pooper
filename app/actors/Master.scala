@@ -101,7 +101,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       giveAnotherSlave :+= (sender, email)
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ready)
     }
-    case Next(lastSent) => {
+    case Next => {
       if(giveAnotherSlave.nonEmpty || emails.hasNext) {
         val (email, notSendTo) = {
           if(giveAnotherSlave.nonEmpty) {
@@ -121,10 +121,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
         }
         else sender
 
-        val now = new Date().getTime
-        val delta = now - lastSent
-        val deltaPause = if(delta < 0) pause else if(delta > pause) 0 else pause - delta
-        Akka.system.scheduler.scheduleOnce(deltaPause milliseconds, target, Ask(Recovery, email))
+        Akka.system.scheduler.scheduleOnce(pause milliseconds, target, Ask(Recovery, email))
       }
       else {
         vacant :+= sender
@@ -180,7 +177,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
 case object Launch
 
-case class Next(lastSent: Long)
+case object Next
 
 case object StatusReq
 
