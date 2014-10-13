@@ -148,7 +148,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       Logger.info("Good answer "+email+" "+status.toString)
       updateStat(sender, c => c.copy(good = c.good + 1))
       lastBlock -= sender
-      write((email :: {if(a.exists) "1" else "0"} :: body :: Nil).mkString(";") + "\r\n", true)
+      write((email :: {if(a.notExists) "0" else if(a.exists) "1" else "2"} :: body :: Nil).mkString(";") + "\r\n", true)
       processed += 1
       sender ! Ready
     }
