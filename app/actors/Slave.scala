@@ -47,7 +47,6 @@ trait SlaveHeritage extends Actor {
       val body = bodyExtractor.findFirstIn(r.body)
       if (r.body.contains("status\":403")) s ! BlockAnswer(method, email)
       else if (r.body.contains("error\":\"not_available_for_mrim")) s ! MrimAnswer(email)
-      else if (r.body.contains("\"body\":{\"retry_after\"")) s ! BlockAnswer(method, email)
       else
         body match {
           case Some(b) => s ! Answer(method, email, r.status, b)
