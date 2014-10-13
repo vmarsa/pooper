@@ -52,8 +52,8 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   val slaves = slavesTuples.map(_._2)
   var blocks = Map[ActorRef, Boolean]()
 
-  var cooldown = 1000
-  var pause = 0
+  var cooldown = 8000
+  var pause = 4000
 
   var lastBlock = Map[ActorRef, Boolean]()
 
@@ -101,7 +101,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       giveAnotherSlave :+= (sender, email)
       Akka.system.scheduler.scheduleOnce(cooldown milliseconds, sender, Ready)
     }
-    case Next => {
+    case Next(lastSent) => {
       if(giveAnotherSlave.nonEmpty || emails.hasNext) {
         val (email, notSendTo) = {
           if(giveAnotherSlave.nonEmpty) {
@@ -121,7 +121,10 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
         }
         else sender
 
-        Akka.system.scheduler.scheduleOnce(pause milliseconds, target, Ask(Recovery, email))
+        val now = new Date().getTime
+        val delta = now - lastSent
+        val deltaPause = if(delta < 0) pause else if(delta > pause) 0 else pause - delta
+        Akka.system.scheduler.scheduleOnce(deltaPause milliseconds, target, Ask(Recovery, email))
       }
       else {
         vacant :+= sender
@@ -177,7 +180,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
 
 case object Launch
 
-case object Next
+case class Next(lastSent: Long)
 
 case object StatusReq
 
