@@ -22,7 +22,7 @@ object Application extends Controller {
 
   def index = {
     Action.async{
-      (master ? StatusReq).mapTo[StatusResp].map(msg => Ok(views.html.index(msg)))
+      (master ? StatusReq).mapTo[actors.Status].map(response _)
     }
   }
 
@@ -31,7 +31,12 @@ object Application extends Controller {
       import java.io.File
       val filename = file.filename
       val contentType = file.contentType
-      file.ref.moveTo(new File("/tmp/emails.csv"), true)
+      try {
+        new File("emails.csv").delete()
+      }
+      file.ref.moveTo(new File("emails.csv"), true)
+
+      master ! Launch
       Ok(views.html.redirect())
     }.getOrElse {
       Ok("Error file")
@@ -57,5 +62,11 @@ object Application extends Controller {
     master ! SetPause(num)
     Ok(views.html.redirect())
   }
+
+  def response(status: actors.Status) = Ok(status match {
+    case Initial => views.html.upload()
+    case s: StatusResp => views.html.index(s)
+    case f:Finished => views.html.finished(f)
+  })
 
 }

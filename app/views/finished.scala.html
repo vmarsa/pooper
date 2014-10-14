@@ -1,0 +1,23 @@
+@(finished: actors.Finished)
+
+@main("Finished "+finished.size.toString){
+
+<div class="panel panel-success">
+    <div class="panel-heading">
+        <h3 class="panel-title">Шаг 3. Скачайте результаты проверки</h3>
+    </div>
+    <div class="panel-body">
+        <p>Валидация выполнено успешно</p>
+        <p>Провалидировано адресов: @finished.size</p>
+        <p>Начало: @finished.startDate.format("hh:mm dd.MM.YYYY")</p>
+        <p>Окончание: @finished.endDate.format("hh:mm dd.MM.YYYY")</p>
+        <p>Средняя скорость (запросов в секунду): @finished.speed</p>
+        <p>
+            <a href="/result/get" target="_blank">Скачать файл с результатми валидации</a>
+        </p>
+    </div>
+</div>
+
+@uploadForm("Проверить еще один файл")
+
+}

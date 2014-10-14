@@ -64,9 +64,10 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   var processed = 0
 
   var start: Option[Date] = None
+  var end: Option[Date] = None
 
 
-  lazy val emails: Iterator[String] = Source.fromFile("/tmp/emails.csv").getLines()
+  lazy val emails: Iterator[String] = Source.fromFile("emails.csv").getLines()
 
 
 
@@ -90,6 +91,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
         slavesStats = slavesMap.map(s => s._1 -> SlaveStat())
         lastBlock = Map[ActorRef, Boolean]()
         start = Some(new Date())
+        end = None
         write("", false)
         slaves.foreach(_ ! Ready)
       }
@@ -128,6 +130,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
         if(vacant.size == slaves.size) {
           finished = true
           launched = false
+          end = Some(new Date())
         }
       }
     }
@@ -161,9 +164,22 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   }
 
   private def statusMessage = {
+    (launched, finished) match {
+      case (false, false) => Initial
+      case (true, _) =>
+        val startMils = start.map(_.getTime)
+        val currentMils = new Date().getTime
+        StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0), slavesTuples.map(s => s._1 -> slavesStats(s._2).copy(throuputPerHour = startMils.map(k => slavesStats(s._2).good*1000*60*60/(currentMils - k)).getOrElse(0) )))
+      case (false, true) => {
+       Finished(processed, start.get, end.get, speed(end.get))
+      }
+    }
+  }
+
+  private def speed(endDate: Date) = {
     val startMils = start.map(_.getTime)
-    val currentMils = new Date().getTime
-    StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0), slavesTuples.map(s => s._1 -> slavesStats(s._2).copy(throuputPerHour = startMils.map(k => slavesStats(s._2).good*1000*60*60/(currentMils - k)).getOrElse(0) )))
+    val currentMils = endDate.getTime
+    startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0L)
   }
 
   private def write(line: String, append: Boolean) = {
@@ -181,10 +197,16 @@ case object Next
 
 case object StatusReq
 
-case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean, throughputPerHour: Long, slavesStat: List[(String, SlaveStat)])
+case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean, throughputPerHour: Long, slavesStat: List[(String, SlaveStat)]) extends Status
 
 case class SetCooldown(cooldown: Int)
 
 case class SetPause(pause: Int)
+
+trait Status
+
+case class Finished(size: Long, startDate: Date, endDate: Date, speed: Long) extends Status
+
+case object Initial extends Status
 
 

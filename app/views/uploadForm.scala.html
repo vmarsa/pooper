@@ -1,0 +1,31 @@
+@(title: String)
+
+<div class="panel panel-info">
+    <div class="panel-heading">
+        <h3 class="panel-title">@title</h3>
+    </div>
+    <div class="panel-body">
+        @helper.form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
+
+        <div class="row col-sm-offset-1 col-sm-10">
+            <p>
+                Требуется использовать CSV файл, один из столбцов которого заполнен email адресами с доменомами mail.ru, bk.ru,
+                list.ru, inbox.ru.
+            </p>
+        </div>
+
+        <div class="row col-sm-offset-1 col-sm-10">
+            <p>
+            <label for="emailsFile" class="col-sm-2 control-label">CSV файл</label>
+            <input type="file" name="emailsFile" id="emailsFile"/>
+            </p>
+        </div>
+
+        <div class="row col-sm-offset-1 col-sm-10">
+            <p>
+                <button type="submit" class="btn btn-info">Загрузить и начать валидацию</button>
+            </p>
+        </div>
+        }
+    </div>
+</div>

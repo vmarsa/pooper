@@ -1,56 +1,59 @@
 @(status: actors.StatusResp)
 
-<!DOCTYPE html>
+@main(status.processed.toString){
 
-<html>
-<head>
-    <title>@status.processed</title>
-    <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
-    <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
-    <script src="@routes.Assets.at("javascripts/jquery-1.9.0.min.js")" type="text/javascript"></script>
-    </head>
-    <body>
-         <h6>data</h6>
-        <dl>
-            <dt>Upload file</dt>
-            <dd>
-@helper.form(action = routes.Application.upload, 'enctype -> "multipart/form-data") {
-    <input type="file" name="emailsFile">
-    <p>
-        <input type="submit">
-    </p>
-}
-            </dd>
-            <dt>Cooldown</dt>
-            <dd>@status.cooldown</dd>
-            <dt>Pause</dt>
-            <dd>@status.pause</dd>
-            <dt>Processed</dt>
-            <dd>@status.processed</dd>
-            <dt>Finished</dt>
-            <dd>@status.finished</dd>
-            <dt>Throughput Requests/Hour</dt>
-            <dd>@status.throughputPerHour</dd>
-            <dt>Results<dt>
-            <dd><a href="/result/get" target="_blank">Download results file</a></dd>
+
+<div class="panel panel-info">
+    <div class="panel-heading">
+        <h3 class="panel-title">Шаг 2. Дождитесь завершения валидации</h3>
+    </div>
+    <div class="panel-body">
+<dl>
+    <dt>Cooldown</dt>
+    <dd>@status.cooldown</dd>
+    <dt>Pause</dt>
+    <dd>@status.pause</dd>
+    <dt>Processed</dt>
+    <dd>@status.processed</dd>
+    <dt>Finished</dt>
+    <dd>@status.finished</dd>
+    <dt>Throughput Requests/Hour</dt>
+    <dd>@status.throughputPerHour</dd>
 </dl>
-            <h6> slaves</h6>
 
-            <table>
-            <tr><th>NAME></th><th>TPH</th><th>G</th><th>B</th><th>M</th><th>TAN</th></tr>
-@for(stat <- status.slavesStat) {
-  <tr>
-    <td>@stat._1</td>
-    <td>@stat._2.throuputPerHour</td>
-    <td>@stat._2.good</td>
-    <td>@stat._2.bad</td>
-    <td>@stat._2.mrim</td>
-    <td>@stat._2.toAnother</td>
-  </tr>
-}
+    </div>
+    </div>
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Информация. Список каналов выполнения запросов</h3>
+    </div>
+    <div class="panel-body">
+
+<table>
+    <tr>
+        <th>NAME></th>
+        <th>TPH</th>
+        <th>G</th>
+        <th>B</th>
+        <th>M</th>
+        <th>TAN</th>
+    </tr>
+    @for(stat <- status.slavesStat) {
+    <tr>
+        <td>@stat._1</td>
+        <td>@stat._2.throuputPerHour</td>
+        <td>@stat._2.good</td>
+        <td>@stat._2.bad</td>
+        <td>@stat._2.mrim</td>
+        <td>@stat._2.toAnother</td>
+    </tr>
+    }
 
 </table>
-
-
-    </body>
-</html>
+</div>
+    </div>
+<script language="JavaScript">
+setTimeout(function () { location.reload(1); }, 5000);
+</script>
+}

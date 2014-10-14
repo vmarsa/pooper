@@ -6,6 +6,8 @@ libraryDependencies ++= Seq(
   jdbc,
   anorm,
   cache,
+  "org.webjars" %% "webjars-play" % "2.2.1-2",
+  "org.webjars" % "bootstrap" % "3.1.0",
   "com.typesafe.akka" %% "akka-actor" % "2.2.0",
   "org.specs2" %% "specs2" % "1.14" % "test",
   "commons-codec" % "commons-codec" % "1.7",
