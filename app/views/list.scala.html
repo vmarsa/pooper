@@ -1,0 +1,25 @@
+@(ids: List[String])
+
+@main("Предыдущие результаты"){
+
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <h3 class="panel-title">Предыдущие результаты проверок</h3>
+    </div>
+    <div class="panel-body">
+        <p>
+            Если в текущий момент выполняется валидация батча, он тоже присутствует в списке
+        </p>
+        <table class="table table-striped">
+            @for(id <- ids) {
+                <tr>
+                    <td>
+                        <a href="/result/get/@id" target="_blank">@id</a>
+                    </td>
+                </tr>
+            }
+        </table>
+    </div>
+</div>
+
+}
