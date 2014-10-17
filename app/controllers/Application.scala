@@ -31,26 +31,18 @@ object Application extends Controller {
       import java.io.File
       val filename = file.filename
       val contentType = file.contentType
-      try {
-        new File("emails.csv").delete()
-      }
-      file.ref.moveTo(new File("emails.csv"), true)
+      val id = RequestPath.generateId
+      file.ref.moveTo(new File(RequestPath.requestPath(id)), true)
 
-      master ! Launch
+      master ! Launch(id)
       Ok(views.html.redirect())
     }.getOrElse {
       Ok("Error file")
     }
   }
 
-  def launch = Action {
-    Logger.info("Launching!")
-    master ! Launch
-    Ok(views.html.redirect())
-  }
-
-  def get = Action {
-    Ok.sendFile(new java.io.File("result.csv"))
+  def get(id: String) = Action {
+    Ok.sendFile(new java.io.File(RequestPath.resultPath(id)))
   }
 
   def cooldown(num : Int) = Action{
@@ -68,5 +60,10 @@ object Application extends Controller {
     case s: StatusResp => views.html.index(s)
     case f:Finished => views.html.finished(f)
   })
+
+  def list = Action {
+    val requests = RequestPath.lastIds
+    Ok(views.html.list(requests))
+  }
 
 }

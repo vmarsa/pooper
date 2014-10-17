@@ -9,16 +9,19 @@
     </div>
     <div class="panel-body">
 <dl>
-    <dt>Cooldown</dt>
+    <!--<dt>Cooldown</dt>
     <dd>@status.cooldown</dd>
     <dt>Pause</dt>
-    <dd>@status.pause</dd>
-    <dt>Processed</dt>
+    <dd>@status.pause</dd>-->
+    <dt>Проверено</dt>
     <dd>@status.processed</dd>
-    <dt>Finished</dt>
-    <dd>@status.finished</dd>
-    <dt>Throughput Requests/Hour</dt>
+    <dt>Из</dt>
+    <dd>@status.size</dd>
+    <dt>Скорость, емэйлов в час</dt>
     <dd>@status.throughputPerHour</dd>
+    <p>
+        <a href="/result/get/@status.id" target="_blank">Скачать файл с текущими результатами</a>
+    </p>
 </dl>
 
     </div>
@@ -30,7 +33,7 @@
     </div>
     <div class="panel-body">
 
-<table>
+<table class="table table-striped">
     <tr>
         <th>NAME></th>
         <th>TPH</th>

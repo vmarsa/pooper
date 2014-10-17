@@ -4,9 +4,9 @@
 
 # Home page
 GET     /                           controllers.Application.index
-GET     /launch                     controllers.Application.launch
+GET     /list                       controllers.Application.list
 POST    /upload                     controllers.Application.upload
-GET     /result/get                 controllers.Application.get
+GET     /result/get/:id             controllers.Application.get(id: String)
 GET     /cooldown/set/:num          controllers.Application.cooldown(num: Int)
 GET     /pause/set/:num             controllers.Application.pause(num: Int)
 

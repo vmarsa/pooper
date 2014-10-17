@@ -4,12 +4,13 @@ import akka.actor.{Props, ActorRefFactory, ActorRef, Actor}
 import akka.actor.Actor.Receive
 import play.libs.Akka
 import scala.concurrent.duration._
-import java.io.FileWriter
+import java.io.{File, FileWriter}
 import scala.io.Source
 import play.api.Play
 import scala.concurrent.ExecutionContext.Implicits.global
 import play.api.Logger
 import java.util.Date
+import java.text.SimpleDateFormat
 
 /**
  * Created by DmiBaska on 06.10.2014.
@@ -66,8 +67,11 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   var start: Option[Date] = None
   var end: Option[Date] = None
 
+  var currentId: String = null
 
-  lazy val emails: Iterator[String] = Source.fromFile("emails.csv").getLines()
+
+  var emails: Iterator[String] = Iterator.empty
+  var size = 0
 
 
 
@@ -81,8 +85,11 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   }
 
   override def receive: Receive = {
-    case Launch => {
+    case Launch(id) => {
       if(!launched) {
+        currentId = id
+        size = Source.fromFile(RequestPath.requestPath(currentId)).getLines().size
+        emails = Source.fromFile(RequestPath.requestPath(currentId)).getLines()
         Logger.info("launch")
         launched = true
         processed = 0
@@ -169,9 +176,9 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
       case (true, _) =>
         val startMils = start.map(_.getTime)
         val currentMils = new Date().getTime
-        StatusResp(cooldown, pause, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0), slavesTuples.map(s => s._1 -> slavesStats(s._2).copy(throuputPerHour = startMils.map(k => slavesStats(s._2).good*1000*60*60/(currentMils - k)).getOrElse(0) )))
+        StatusResp(currentId, cooldown, pause, size, processed, finished, startMils.map(s => processed.toLong*1000*60*60/(currentMils - s)).getOrElse(0), slavesTuples.map(s => s._1 -> slavesStats(s._2).copy(throuputPerHour = startMils.map(k => slavesStats(s._2).good*1000*60*60/(currentMils - k)).getOrElse(0) )))
       case (false, true) => {
-       Finished(processed, start.get, end.get, speed(end.get))
+       Finished(currentId, processed, start.get, end.get, speed(end.get))
       }
     }
   }
@@ -183,7 +190,7 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   }
 
   private def write(line: String, append: Boolean) = {
-    val fw = new FileWriter("result.csv", append)
+    val fw = new FileWriter(RequestPath.resultPath(currentId), append)
     try {
       fw.write(line)
     }
@@ -191,13 +198,13 @@ class Master(slaveFactory: ActorRefFactory => ActorRef,
   }
 }
 
-case object Launch
+case class Launch(id: String)
 
 case object Next
 
 case object StatusReq
 
-case class StatusResp(cooldown: Int, pause: Int, processed: Int, finished: Boolean, throughputPerHour: Long, slavesStat: List[(String, SlaveStat)]) extends Status
+case class StatusResp(id: String, cooldown: Int, pause: Int, size: Int, processed: Int, finished: Boolean, throughputPerHour: Long, slavesStat: List[(String, SlaveStat)]) extends Status
 
 case class SetCooldown(cooldown: Int)
 
@@ -205,8 +212,23 @@ case class SetPause(pause: Int)
 
 trait Status
 
-case class Finished(size: Long, startDate: Date, endDate: Date, speed: Long) extends Status
+case class Finished(id: String, size: Long, startDate: Date, endDate: Date, speed: Long) extends Status
 
 case object Initial extends Status
 
+object RequestPath {
+  private val formatter = new SimpleDateFormat("yyyy-MM-hh_HH:mm:SSS")
+  def generateId = formatter.format(new Date())
+
+  private val dirName = "requests"
+
+  def requestPath(id: String) = dirName + "/"+id+"/request.csv"
+  def resultPath(id: String) = dirName +"/"+id+"/result.csv"
+
+  def lastIds: List[String] = {
+    val dir = new File(dirName)
+    if(!dir.exists() || !dir.isDirectory) Nil
+    else dir.listFiles().toList.filter(_.isDirectory).map(_.getName)
+  }
+}
 
