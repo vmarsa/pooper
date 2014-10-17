@@ -217,7 +217,7 @@ case class Finished(id: String, size: Long, startDate: Date, endDate: Date, spee
 case object Initial extends Status
 
 object RequestPath {
-  private val formatter = new SimpleDateFormat("yyyy-MM-hh_HH:mm:SSS")
+  private val formatter = new SimpleDateFormat("yyyy-MM-hh-HH-mm-SSS")
   def generateId = formatter.format(new Date())
 
   private val dirName = "requests"
